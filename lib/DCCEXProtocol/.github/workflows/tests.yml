@@ -1,0 +1,21 @@
+name: Run GoogleTest
+
+on:
+  push:
+    branches: [main, devel]
+  pull_request:
+    branches: [main, devel]
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+      - name: Prepare build directory
+        run: cmake -Bbuild
+      - name: Compile tests
+        run: cmake --build build --parallel --target DCCEXProtocolTests
+      - name: Run tests
+        run: ./build/tests/DCCEXProtocolTests --gtest_shuffle --gtest_repeat=5 --gtest_recreate_environments_when_repeating
