@@ -59,6 +59,6 @@ private:
   void _removeFromList(LocoNetSlotClass *slot);
 };
 
-extern LocoNetSlotClass *Slots;
+extern LocoNetSlotClass *Slots = nullptr;
 
 #endif
