@@ -1,60 +1,55 @@
 #pragma once
 
-#include <Arduino.h>
-#include <LocoNet.h>
-#include "LocoNetSlot.h"
-#include "DCCEXDelegate.h"
+#include "DCCEXInterface.h"
+#include "LocoNetInterface.h"
+#include "Slot.h"
+#include "MemoryFree.h"
+#include "config.h"
 #include "diag.h"
 
+#define CS_POWER_CHANGE  0x01
+#define POWER_OFF 0
+#define POWER_ON  1
+
 class CommandStationClass {
-    public:
-      CommandStationClass();
+  public:
+    CommandStationClass();
 
-      void init(uint8_t txPin);
+    void init();
 
-      bool setPower(uint8_t power);
+    uint16_t getSlotAddress(uint8_t id);
 
-      uint8_t getPower();
+    uint8_t addSlot(uint16_t addr, uint8_t id);
 
-      uint8_t addSlot(uint16_t addr, uint8_t id);
+    uint8_t getSlotStatus(uint16_t addr);
+    void setSlotStatus(uint16_t addr, uint8_t status);
+    
+    uint8_t getSlotSpeed(uint16_t addr);
+    void setSlotSpeed(uint16_t addr, uint8_t speed, uint8_t src);
 
-      uint16_t getSlotAddress(uint8_t id);
+    uint8_t getSlotDirection(uint16_t addr);
+    void setSlotDirection(uint16_t addr, uint8_t dir, uint8_t src);
 
-      void setSlotStatus(uint16_t addr, uint8_t status);
+    uint16_t getSlotFunctions(uint16_t addr);
+    void setSlotFunctions(uint16_t addr, uint16_t functions, uint8_t src);
 
-      uint8_t getSlotStatus(uint16_t addr);
+    void setSensor(uint16_t addr, uint8_t state, uint8_t src);
 
-      bool setSlotSpeed(uint16_t addr, uint8_t speed);
+    void setSwitch(uint16_t addr, uint8_t out, uint8_t dir, uint8_t src);
 
-      uint8_t getSlotSpeed(uint16_t addr);
+    uint8_t getPower() { return _power; };
+    void setPower(uint8_t power, uint8_t src);
 
-      bool setSlotDirection(uint16_t addr, uint8_t dir);
-      
-      uint8_t getSlotDirection(uint16_t addr);
+    void EmergencyStop(uint8_t src);
 
-      bool setSlotThrottle(uint16_t addr, uint8_t speed, uint8_t dir);
-      
-      bool setSlotFunctions(uint16_t addr, uint16_t functionMap);
+    void check();
 
-      uint16_t getSlotFunctions(uint16_t addr);
-
-      uint8_t getSlotDIRF(uint16_t addr);
-
-      uint8_t getSlotSND(uint16_t addr);
-
-      void powerOn();
-
-      void powerOff();
-      
-      void emergencyStop();
-
-      void processLoconetPacket(lnMsg *lnPacket);
-
-      void check();
-
-    private:
-      uint8_t _power = 2;
-      LocoNetSlotClass *_slots = nullptr;
+  private:
+    uint8_t _power;
+    uint8_t _status;
+    SlotClass *_slots = nullptr;
+    SlotClass *_getSlotById(uint8_t id);
+    SlotClass *_getSlotByAddress(uint16_t addr);
 };
 
 extern CommandStationClass CommandStation;

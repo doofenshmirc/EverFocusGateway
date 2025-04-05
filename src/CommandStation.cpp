@@ -1,252 +1,152 @@
 #include "CommandStation.h"
-#include <MemoryFree.h>
 
 CommandStationClass::CommandStationClass() {
-  _slots = new LocoNetSlotClass(0, 0);
 }
 
-void CommandStationClass::init(uint8_t txPin) {
-  LocoNet.init(txPin);
-}
-
-bool CommandStationClass::setPower(uint8_t power) {
-  if ( _power != power) {
-    _power = power;
-    return true;
-  }
-  return false;
-}
-
-uint8_t CommandStationClass::getPower() {
-  return _power;
-}
-
-uint8_t CommandStationClass::addSlot(uint16_t addr, uint8_t id) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      if (id != 0 ) s->setId(id);
-      return s->getId();
-    }
-  }
-
-  new LocoNetSlotClass(addr, id);
-
-  if ( id == 0 ) { LocoNet.send(OPC_LOCO_ADR, (addr & 0xFF80) >> 7, addr & 0x7F ); }
-
-  return id;
+void CommandStationClass::init() {
 }
 
 uint16_t CommandStationClass::getSlotAddress(uint8_t id) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getId() == id) {
-      return s->getAddress();
-    }
-  }
+  SlotClass *slot = _getSlotById(id);
+  
+  if ( slot ) { return slot->getAddress(); }
+
   return 0;
 }
 
-void CommandStationClass::setSlotStatus(uint16_t addr, uint8_t status) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      s->setStatus(status);
-    }
+uint8_t CommandStationClass::addSlot(uint16_t addr, uint8_t id) {
+  SlotClass *slot = _getSlotByAddress(addr);
+
+  if (!slot) { 
+    slot = new SlotClass(addr, id); 
   }
+
+  if (slot) { 
+    if ( slot->getId() == 0 && id == 0 ) LocoNetInterface.send(OPC_LOCO_ADR, (addr & 0xFF80) >> 7, addr & 0x7F ); 
+    else if ( slot->getId() != id && id != 0 ) slot->setId(id); 
+
+    return slot->getId();
+  }
+
+  return 0x80;
 }
 
 uint8_t CommandStationClass::getSlotStatus(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->getStatus();
-    }
-  }
-  return SL_STATUS_UNSYNCED;
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if (slot) { return slot->getSlotStatus(); }
+  
+  return 128;
 }
 
-bool CommandStationClass::setSlotSpeed(uint16_t addr, uint8_t speed) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->setSpeed(speed);
-    }
-  }
-  return false;
+void CommandStationClass::setSlotStatus(uint16_t addr, uint8_t status) {
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if (slot) { slot->setSlotStatus(status); }
 }
 
 uint8_t CommandStationClass::getSlotSpeed(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->getSpeed();
-    }
-  }
-  return 0;
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if ( slot ) { return slot->getSpeed(); }
+
+  return 128;
 }
 
-bool CommandStationClass::setSlotDirection(uint16_t addr, uint8_t dir) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->setDirection(dir);
-    }
-  }
-  return false;
+void CommandStationClass::setSlotSpeed(uint16_t addr, uint8_t speed, uint8_t src) {
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if ( slot ) { slot->setSpeed(speed, src); }
 }
 
 uint8_t CommandStationClass::getSlotDirection(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->getDirection();
-    }
-  }
-  return 0;
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if ( slot ) { return slot->getDirection(); }
+
+  return Direction::Forward;
 }
 
-bool CommandStationClass::setSlotThrottle(uint16_t addr, uint8_t speed, uint8_t dir) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      bool isSpeedChange = s->setSpeed(speed);
-      bool isDirChange = s->setDirection(dir);
-      return ( isSpeedChange || isDirChange );
-    }
-  }
-  return false;
-}
-
-bool CommandStationClass::setSlotFunctions(uint16_t addr, uint16_t functionMap) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->setFunctions(functionMap);
-    }
-  }
-  return false;
+void CommandStationClass::setSlotDirection(uint16_t addr, uint8_t dir, uint8_t src) {
+  SlotClass *slot = _getSlotByAddress(addr);
+  
+  if ( slot ) { slot->setDirection(dir, src); }
 }
 
 uint16_t CommandStationClass::getSlotFunctions(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return s->getFunctions();
-    }
-  }
-  return 0;
-}
+  SlotClass *slot = _getSlotByAddress(addr);
   
-uint8_t CommandStationClass::getSlotDIRF(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return (s->getDirection()<<5) | ((s->getFunctions() & 0x1) << 4) | ((s->getFunctions() & 0x1E) >> 1);
-    }
-  }
+  if ( slot ) { return slot->getFunctions(); }
+
   return 0;
 }
 
-uint8_t CommandStationClass::getSlotSND(uint16_t addr) {
-  for (LocoNetSlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
-    if (s->getAddress() == addr) {
-      return ((s->getFunctions() & 0x1E0) >> 5);
-    }
-  }
-  return 0;
+void CommandStationClass::setSlotFunctions(uint16_t addr, uint16_t functions, uint8_t src) {
+  SlotClass *slot = _getSlotByAddress(addr);
+
+  if ( slot ) { slot->setFunctions(functions, src); }
 }
 
-void CommandStationClass::processLoconetPacket(lnMsg *lnPacket) {
-  uint8_t id;
-  uint16_t addr;
+void CommandStationClass::setSensor(uint16_t addr, uint8_t state, uint8_t src) {
+  if ( src != SRC_LOCONET ) LocoNetInterface.sendSensor(addr, state);
+}
 
-  DIAG("Free RAM: %d\n", freeMemory());
-  uint8_t msgLen = getLnMsgSize(lnPacket);
-  DIAG("Receive loconet packet: ");
-  for (uint8_t x = 0; x < msgLen; x++)
-  {
-    DIAG("%02X ", lnPacket->data[x]);
+void CommandStationClass::setSwitch(uint16_t addr, uint8_t out, uint8_t dir, uint8_t src) {
+  if ( src != SRC_DCCEX ) DCCEXInterface.sendSwitch(addr, out, dir);      
+  if ( src != SRC_LOCONET ) LocoNetInterface.sendSwitch(addr, out, dir);
+}
+
+void CommandStationClass::setPower(uint8_t power, uint8_t src) {
+  if (_power != power) {
+    _power = power;
+    if ( src != SRC_LOCONET ) LocoNetInterface.sendPower(power);
+    if ( src != SRC_DCCEX ) DCCEXInterface.sendPower(power);
   }
-  DIAG("\n");
+}
 
-  switch(lnPacket->sd.command) {
-    case OPC_GPON:
-      if ( setPower(1) ) {
-        DCCEXDelegate.sendTrackPower(1);
-      }
-
-      break;
-    case OPC_GPOFF:
-      if ( setPower(0) ) {
-        DCCEXDelegate.sendTrackPower(0);
-      }
-
-      break;
-    case OPC_IDLE:
-      DCCEXDelegate.sendEmergencyStop();
-
-      break;
-    case OPC_WR_SL_DATA:
-    case OPC_SL_RD_DATA:
-      addr = ((uint16_t)lnPacket->sd.adr2 << 7) + lnPacket->sd.adr;
-      id = addSlot(addr, lnPacket->sd.slot);
-      DIAG("CommandStationClass::check OPC_SL_RD_DATA addr:%u, id:%u\n", addr, id);
-
-      if ( id > 0 && id < 128 ) {
-        setSlotThrottle(addr, lnPacket->sd.spd, (lnPacket->sd.dirf & 0x20) >> 5);
-        DCCEXDelegate.sendThrottle(addr, getSlotSpeed(addr), getSlotDirection(addr));
-
-        setSlotFunctions(addr, (getSlotFunctions(addr) &0xFFFFF600 ) | ((int)lnPacket->sd.snd << 5) | ((lnPacket->sd.dirf & 0xF) << 1) | ((lnPacket->sd.dirf & 0x10) >> 4));  
-        DCCEXDelegate.sendFunctions(addr, getSlotFunctions(addr));
-      }
-
-      break;
-    case OPC_LOCO_SPD:
-      addr = getSlotAddress(lnPacket->ld.slot);
-      DIAG("CommandStationClass::check OPC_LOCO_SPD addr:%u, speed:%u\n", addr, lnPacket->ld.data);
-
-      if ( addr > 0 ) { 
-        if ( setSlotSpeed(addr, lnPacket->ld.data) ) {
-          DCCEXDelegate.sendThrottle(addr, getSlotSpeed(addr), getSlotDirection(addr));
-        }
-      } else LocoNet.send(OPC_RQ_SL_DATA, lnPacket->ld.slot, 0);
-
-      break;
-    case OPC_LOCO_DIRF:
-      addr = getSlotAddress(lnPacket->ld.slot);
-      DIAG("CommandStationClass::check OPC_LOCO_DIRF addr:%u, dirf:%u\n", addr, lnPacket->ld.data);
-
-      if ( addr > 0 ) { 
-        if ( setSlotDirection(addr, (lnPacket->ld.data & 0x20) >> 5) ) {
-          DCCEXDelegate.sendThrottle(addr, getSlotSpeed(addr), getSlotDirection(addr));
-        }
-        if ( setSlotFunctions(addr, (getSlotFunctions(addr) &0xFFFFFFE0 ) | ((lnPacket->ld.data & 0xF) << 1) | ((lnPacket->ld.data & 0x10) >> 4)) ) {  
-          DCCEXDelegate.sendFunctions(addr, getSlotFunctions(addr));
-        }
-      } else LocoNet.send(OPC_RQ_SL_DATA, lnPacket->ld.slot, 0);
-
-      break;
-    case OPC_LOCO_SND:
-      addr = getSlotAddress(lnPacket->ld.slot);
-      DIAG("CommandStationClass::check OPC_LOCO_SND addr:%u, snd:%u\n", addr, lnPacket->ld.data);
-
-      if ( addr > 0 ) {
-        if ( setSlotFunctions(addr, (getSlotFunctions(addr) &0xFFFFFE1F ) | ((int)lnPacket->ld.data << 5)) ) {
-          DCCEXDelegate.sendFunctions(addr, getSlotFunctions(addr));
-        }
-      } else LocoNet.send(OPC_RQ_SL_DATA, lnPacket->ld.slot, 0);
-
-      break;
-    case OPC_SW_REQ:
-      addr = (lnPacket->srq.sw1 | ((lnPacket->srq.sw2 & 0x0F) << 7)) + 1;
-      DIAG("CommandStationClass::check OPC_SW_REQ addr:%u, out:%u, dir:%u\n", addr, lnPacket->srq.sw2 & OPC_SW_REQ_OUT, lnPacket->srq.sw2 & OPC_SW_REQ_DIR);
-
-      DCCEXDelegate.sendSwitchRequest(addr, lnPacket->srq.sw2 & OPC_SW_REQ_OUT, lnPacket->srq.sw2 & OPC_SW_REQ_DIR);
-
-      break;  
-    default:
-      DIAG("# !! Ignore LocoNet message !! #\n");      
-      break;
-  }
+void CommandStationClass::EmergencyStop(uint8_t src) {
+  if ( src != SRC_DCCEX ) DCCEXInterface.sendEmergencyStop();
+  if ( src != SRC_LOCONET ) LocoNetInterface.sendEmergencyStop();
 }
 
 void CommandStationClass::check() {
-  lnMsg *lnPacket = LocoNet.receive();
+  for (SlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
+    if ( s->getSourceStatus() != SRC_NULL ) {
+      if ( s->getSourceStatus() != SRC_LOCONET ) {
+        if ( s->getSpeedStatus() ) LocoNetInterface.sendSpeed(s->getId(), s->getSpeed());
+        if ( s->getDirectionStatus() || (s->getFunctionsStatus() & 0x1F)) LocoNetInterface.sendDirFunct0to4(s->getId(), s->getDirection(), s->getFunctions());
+        if ( s->getFunctionsStatus() & 0x1E0) LocoNetInterface.sendFunct5to8(s->getId(), s->getFunctions());
+      }
+    
+      if ( s->getSourceStatus() != SRC_DCCEX ) {
+        if ( s->getSpeedStatus() || s->getDirectionStatus() ) DCCEXInterface.sendThrottle(s->getAddress(), s->getSpeed(), s->getDirection());
+        if ( s->getFunctionsStatus() ) DCCEXInterface.sendFunctions(s->getAddress(), s->getFunctions(), s->getFunctionsStatus());
+      }
 
-  if ( lnPacket ) {
-    processLoconetPacket(lnPacket);
-    LocoNet.processSwitchSensorMessage(lnPacket);
+      //s->setSlotStatus(SLOT_STAT_READY);
+      s->setSpeedStatus(SRC_NULL);
+      s->setDirectionStatus(SRC_NULL);
+      s->setFunctionsStatus(SRC_NULL);
+    }
   }
 }
 
+// private methods
+SlotClass *CommandStationClass::_getSlotByAddress(uint16_t addr) {
+  for (SlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
+    if (s->getAddress() == addr) {
+      return s;
+    }
+  }
+  return nullptr;
+}
+SlotClass *CommandStationClass::_getSlotById(uint8_t id) {
+  for (SlotClass *s = _slots->getFirst(); s; s = s->getNext()) {
+    if (s->getId() == id) {
+      return s;
+    }
+  }
+  return nullptr;
+}
+
 CommandStationClass CommandStation = CommandStationClass();
-  

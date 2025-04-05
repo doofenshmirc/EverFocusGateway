@@ -1,19 +1,21 @@
-#include <Arduino.h>
-
+#include "Arduino.h"
 #include "CommandStation.h"
-#include "DCCEXDelegate.h"
-#include "config.h"
-
+#include "LocoNetInterface.h"
+#include "DCCEXInterface.h"
 
 void setup() {
-  Serial.begin(115200);
-  DCCEX_SERIAL.begin(115200);
-  DCCEXDelegate.init(&DCCEX_SERIAL);
-  CommandStation.init(7);
-  DIAG("%s started\n", PRG_NAME);
+  DCCEX_LOG.begin(115200);
+  DCCEX_STREAM.begin(115200);
+  
+  CommandStation.init();
+  LocoNetInterface.init(LOCONET_TX);
+  DCCEXInterface.init(&DCCEX_STREAM, &DCCEX_LOG);
+
+  DIAG("%s\n", CS_NAME);
 }
 
 void loop() {
+  LocoNetInterface.check();
+  DCCEXInterface.check();
   CommandStation.check();
-  DCCEXDelegate.check();
 }

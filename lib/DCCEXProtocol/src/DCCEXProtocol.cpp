@@ -1382,7 +1382,7 @@ void DCCEXProtocol::_processTrackType() {
   // _console->println(F("processTrackType()"));
   if (_delegate) {
     char _track = DCCEXInbound::getNumber(0);
-    int32_t _type = DCCEXInbound::getNumber(1);
+    int _type = DCCEXInbound::getNumber(1);
     TrackManagerMode _trackType;
     switch (_type) {
     case 2698315:

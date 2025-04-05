@@ -1,0 +1,13 @@
+{
+    "name": "MemoryFree",
+    "version": "0.3.0",
+    "description": "MemoryFree library.",
+    "keywords": "memory, free",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/apechinsky/arduino-libs.git"
+    },
+    "license": "Apache-2.0",
+    "frameworks": "arduino",
+    "platforms": "atmelavr"
+}
